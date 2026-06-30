@@ -1,0 +1,52 @@
+{
+  "expo": {
+    "name": "Tournée Optimizer",
+    "slug": "tournee-optimizer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "tournee",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1220"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tournee.optimizer",
+      "infoPlist": {
+        "NSCameraUsageDescription": "La caméra sert à photographier et lire automatiquement les adresses de livraison.",
+        "NSLocationWhenInUseUsageDescription": "La position est utilisée pour le guidage GPS précis pendant la tournée.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "La position en arrière-plan permet le guidage vocal même écran éteint.",
+        "UIBackgroundModes": ["location", "audio"]
+      }
+    },
+    "android": {
+      "package": "com.tournee.optimizer",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        { "cameraPermission": "Autoriser la caméra pour scanner les adresses." }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Autoriser la localisation pour le guidage GPS précis."
+        }
+      ]
+    ],
+    "extra": {
+      "nominatimUrl": "https://nominatim.openstreetmap.org",
+      "osrmUrl": "https://router.project-osrm.org"
+    }
+  }
+}
