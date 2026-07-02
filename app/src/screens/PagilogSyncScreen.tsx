@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as DocumentPicker from 'expo-document-picker';
 import { Button, Card, Muted, Title } from '@/components/ui';
 import { useFleetStore } from '@/store/useFleetStore';
 import {
@@ -10,6 +11,12 @@ import {
   importVehiclesCsv,
   pushInterventions,
 } from '@/services/pagilog';
+import {
+  exportInterventionsXlsx,
+  exportVehiclesXlsx,
+  importVehiclesXlsx,
+} from '@/services/excel';
+import { Vehicle } from '@/types';
 import { colors, radius, spacing } from '@/theme';
 
 export default function PagilogSyncScreen() {
@@ -33,19 +40,70 @@ export default function PagilogSyncScreen() {
     Alert.alert('Enregistré', 'Configuration PAGILOG mise à jour.');
   }
 
-  async function shareCsv(filename: string, content: string) {
+  async function shareFile(
+    filename: string,
+    content: string,
+    encoding: FileSystem.EncodingType,
+    mimeType: string
+  ) {
     try {
       const uri = `${FileSystem.cacheDirectory ?? ''}${filename}`;
-      await FileSystem.writeAsStringAsync(uri, content, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
+      await FileSystem.writeAsStringAsync(uri, content, { encoding });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'text/csv' });
+        await Sharing.shareAsync(uri, { mimeType });
       } else {
         Alert.alert('Export prêt', `Fichier écrit : ${uri}`);
       }
     } catch (e: any) {
       Alert.alert('Export', e.message ?? String(e));
+    }
+  }
+
+  const shareCsv = (filename: string, content: string) =>
+    shareFile(filename, content, FileSystem.EncodingType.UTF8, 'text/csv');
+
+  const shareXlsx = (filename: string, base64: string) =>
+    shareFile(
+      filename,
+      base64,
+      FileSystem.EncodingType.Base64,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+
+  function confirmReplace(imported: Vehicle[]) {
+    if (imported.length === 0) {
+      Alert.alert('Import', 'Aucun véhicule reconnu dans le fichier.');
+      return;
+    }
+    Alert.alert('Importer', `${imported.length} véhicule(s) détecté(s). Remplacer le parc actuel ?`, [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Remplacer',
+        onPress: () => {
+          setVehicles(imported);
+          setImportText('');
+          Alert.alert('Importé', `${imported.length} véhicule(s) importé(s).`);
+        },
+      },
+    ]);
+  }
+
+  async function importXlsx() {
+    try {
+      const res = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel',
+        ],
+        copyToCacheDirectory: true,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      const base64 = await FileSystem.readAsStringAsync(res.assets[0].uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      confirmReplace(importVehiclesXlsx(base64, Date.now()));
+    } catch (e: any) {
+      Alert.alert('Import Excel', e.message ?? String(e));
     }
   }
 
@@ -55,22 +113,7 @@ export default function PagilogSyncScreen() {
       return;
     }
     try {
-      const imported = importVehiclesCsv(importText, Date.now());
-      if (imported.length === 0) {
-        Alert.alert('Import', 'Aucun véhicule reconnu dans le CSV.');
-        return;
-      }
-      Alert.alert('Importer', `${imported.length} véhicule(s) détecté(s). Remplacer le parc actuel ?`, [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Remplacer',
-          onPress: () => {
-            setVehicles(imported);
-            setImportText('');
-            Alert.alert('Importé', `${imported.length} véhicule(s) importé(s).`);
-          },
-        },
-      ]);
+      confirmReplace(importVehiclesCsv(importText, Date.now()));
     } catch (e: any) {
       Alert.alert('Import', e.message ?? String(e));
     }
@@ -133,25 +176,50 @@ export default function PagilogSyncScreen() {
       </Card>
 
       <Card style={{ gap: spacing(1) }}>
-        <Title style={{ fontSize: 16 }}>Export CSV (compatible tout logiciel)</Title>
-        <Button
-          title="📤 Exporter le parc (véhicules)"
-          variant="secondary"
-          onPress={() => shareCsv('vehicules_pagilog.csv', exportVehiclesCsv(vehicles))}
-        />
-        <Button
-          title="📤 Exporter les interventions"
-          variant="secondary"
-          onPress={() =>
-            shareCsv('interventions_pagilog.csv', exportInterventionsCsv(interventions, vehicles))
-          }
-        />
+        <Title style={{ fontSize: 16 }}>Export (compatible tout logiciel)</Title>
+        <Muted>CSV (;, UTF-8) ou Excel (.xlsx).</Muted>
+        <View style={{ flexDirection: 'row', gap: spacing(1) }}>
+          <Button
+            title="📤 Parc CSV"
+            variant="secondary"
+            onPress={() => shareCsv('vehicules_pagilog.csv', exportVehiclesCsv(vehicles))}
+            style={{ flex: 1 }}
+          />
+          <Button
+            title="📤 Parc Excel"
+            variant="secondary"
+            onPress={() => shareXlsx('vehicules_pagilog.xlsx', exportVehiclesXlsx(vehicles))}
+            style={{ flex: 1 }}
+          />
+        </View>
+        <View style={{ flexDirection: 'row', gap: spacing(1) }}>
+          <Button
+            title="📤 Interv. CSV"
+            variant="secondary"
+            onPress={() =>
+              shareCsv('interventions_pagilog.csv', exportInterventionsCsv(interventions, vehicles))
+            }
+            style={{ flex: 1 }}
+          />
+          <Button
+            title="📤 Interv. Excel"
+            variant="secondary"
+            onPress={() =>
+              shareXlsx(
+                'interventions_pagilog.xlsx',
+                exportInterventionsXlsx(interventions, vehicles)
+              )
+            }
+            style={{ flex: 1 }}
+          />
+        </View>
       </Card>
 
       <Card style={{ gap: spacing(1) }}>
-        <Title style={{ fontSize: 16 }}>Import du parc (CSV)</Title>
-        <Muted>
-          Collez le CSV exporté de PAGILOG (colonnes : immatriculation;marque;modele;annee;vin;km;pagilog_id).
+        <Title style={{ fontSize: 16 }}>Import du parc</Title>
+        <Button title="📂 Importer un fichier Excel (.xlsx)" onPress={importXlsx} />
+        <Muted style={{ marginTop: spacing(0.5) }}>
+          …ou collez le CSV exporté de PAGILOG (colonnes : immatriculation;marque;modele;annee;vin;km;pagilog_id).
         </Muted>
         <TextInput
           style={[styles.input, { height: 120, textAlignVertical: 'top' }]}
@@ -161,7 +229,7 @@ export default function PagilogSyncScreen() {
           value={importText}
           onChangeText={setImportText}
         />
-        <Button title="📥 Importer le parc" onPress={doImport} />
+        <Button title="📥 Importer le CSV collé" onPress={doImport} />
       </Card>
     </ScrollView>
   );

@@ -25,6 +25,8 @@ export function sheetCode(vehicleId: string, formId: string): string {
 export interface SheetOptions {
   companyName?: string;
   operations?: OperationDef[];
+  /** SVG d'un QR code encodant `sheetCode` (association fiable au scan). */
+  qrSvg?: string;
 }
 
 /** Version texte (utile pour aperçu, tests et fiabilité du parsing). */
@@ -94,12 +96,20 @@ export function buildSheetHtml(
     td.code { font-family: 'Courier New', monospace; font-weight: bold; width: 90px; }
     td.fill { width: 30%; }
     .hint { font-size: 11px; color: #666; margin-top: 12px; }
+    .head { display: flex; justify-content: space-between; align-items: flex-start; }
+    .qr { width: 130px; height: 130px; }
+    .qr svg { width: 130px; height: 130px; }
   </style></head><body>
     <h1>${company} — FICHE D'ENTRETIEN</h1>
-    <div class="machine">${escapeHtml(code)}</div>
-    <div class="meta">Véhicule : <b>${escapeHtml(vehicle.make)} ${escapeHtml(
+    <div class="head">
+      <div>
+        <div class="machine">${escapeHtml(code)}</div>
+        <div class="meta">Véhicule : <b>${escapeHtml(vehicle.make)} ${escapeHtml(
     vehicle.model
   )}</b> &nbsp; Immatriculation : <b>${escapeHtml(vehicle.plate)}</b></div>
+      </div>
+      ${opts.qrSvg ? `<div class="qr">${opts.qrSvg}</div>` : ''}
+    </div>
 
     <div class="field"><span class="anchor">KM&gt;</span> <span class="line"></span></div>
     <div class="field"><span class="anchor">DATE&gt;</span> __ / __ / ____</div>

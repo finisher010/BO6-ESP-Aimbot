@@ -14,19 +14,20 @@ Un seul code (Expo / React Native) tourne sur **Android et iPhone**.
 
 | Demande | Réalisation |
 |---|---|
-| 🔧 Entretien du parc en lien avec PAGILOG | `services/pagilog.ts` : mapping canonique, export/import **CSV** (`;`, UTF-8) et adaptateur **REST** configurable (`PagilogSyncScreen`) |
+| 🔧 Entretien du parc en lien avec PAGILOG | `services/pagilog.ts` + `services/excel.ts` : mapping canonique, export/import **CSV** (`;`, UTF-8) **et Excel (.xlsx)**, plus un adaptateur **REST** configurable (`PagilogSyncScreen`) |
 | 📱 Application téléphone | Écrans `Fleet`, `VehicleDetail`, `InterventionForm` : parc, échéances (km + date), historique, saisie d'intervention |
-| 📄 Format papier pour le mécanicien | `services/paperForm.ts` → fiche HTML imprimable (`expo-print`) avec ancres lisibles machine |
-| 🤖 Lecture automatique de ce qu'il remplit | `services/maintenanceOcr.ts` : OCR de la fiche → `parseMaintenanceSheet` → association **automatique** au véhicule via le code d'en-tête, cases cochées, km, date, pièces, coût |
+| 📄 Format papier pour le mécanicien | `services/paperForm.ts` → fiche HTML imprimable (`expo-print`) avec **QR code** + ancres lisibles machine |
+| 🤖 Lecture automatique de ce qu'il remplit | `services/maintenanceOcr.ts` : OCR de la fiche → `parseMaintenanceSheet` → association **automatique** au véhicule via le **QR code** (repli sur le code d'en-tête OCR), cases cochées, km, date, pièces, coût |
 
 ### Flux « papier → numérique »
 
-1. Depuis un véhicule : **Imprimer fiche papier** (chaque fiche porte un code
-   `FE:<véhicule>:<fiche>`).
+1. Depuis un véhicule : **Imprimer fiche papier** (chaque fiche porte un **QR code**
+   et un code texte `FE:<véhicule>:<fiche>`).
 2. Le mécanicien remplit à la main : coche les cases, écrit le km, la date, etc.
-3. **Scanner fiche** : l'app lit la photo, reconnaît le véhicule via le code,
-   pré-remplit la fiche numérique. On vérifie, on enregistre.
-4. **Synchronisation PAGILOG** : envoi REST des fiches, ou export/import CSV.
+3. **Scanner fiche** : l'app lit le **QR code** (association fiable, sans OCR) puis
+   la photo pour extraire les valeurs, et pré-remplit la fiche numérique.
+   On vérifie, on enregistre.
+4. **Synchronisation PAGILOG** : envoi REST des fiches, ou export/import CSV / Excel.
 
 > **PAGILOG** : le format d'échange exact n'étant pas public, l'intégration est
 > isolée dans `services/pagilog.ts`. L'export/import CSV fonctionne immédiatement ;
@@ -60,9 +61,11 @@ app/
 │  │  ├─ voice.ts               Synthèse vocale française (expo-speech)
 │  │  ├─ location.ts            GPS haute précision (expo-location)
 │  │  ├─ maintenanceSchedule.ts Échéances d'entretien (km + date)
-│  │  ├─ paperForm.ts           Fiche papier imprimable (HTML/PDF)
+│  │  ├─ paperForm.ts           Fiche papier imprimable (HTML/PDF) + QR
+│  │  ├─ qr.ts                  Génération du QR code (SVG)
 │  │  ├─ maintenanceOcr.ts      Lecture automatique de la fiche remplie
-│  │  └─ pagilog.ts             Intégration PAGILOG (CSV + REST)
+│  │  ├─ pagilog.ts             Intégration PAGILOG (CSV + REST)
+│  │  └─ excel.ts               Import/export Excel (.xlsx)
 │  ├─ store/
 │  │  ├─ useTourStore.ts        État tournée (zustand) + persistance
 │  │  └─ useFleetStore.ts       État parc/entretien (zustand) + persistance

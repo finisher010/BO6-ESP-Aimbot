@@ -144,21 +144,45 @@ export function exportInterventionsCsv(
   );
 }
 
-/** Importe une flotte depuis un CSV PAGILOG (ou tout logiciel de parc). */
-export function importVehiclesCsv(csv: string, now: number): Vehicle[] {
-  return parseCsv(csv)
-    .filter((r) => (r.immatriculation ?? '').trim().length > 0)
+/**
+ * Convertit des lignes objets (CSV ou Excel) en véhicules.
+ * Tolère quelques alias de colonnes courants.
+ */
+export function recordsToVehicles(rows: Record<string, string>[], now: number): Vehicle[] {
+  const pick = (r: Record<string, string>, keys: string[]): string => {
+    for (const k of keys) {
+      const found = Object.keys(r).find((c) => c.trim().toLowerCase() === k);
+      if (found && r[found] != null && String(r[found]).trim() !== '') return String(r[found]).trim();
+    }
+    return '';
+  };
+  return rows
+    .map((r) => ({
+      plate: pick(r, ['immatriculation', 'immat', 'plate']),
+      make: pick(r, ['marque', 'make']),
+      model: pick(r, ['modele', 'modèle', 'model']),
+      year: pick(r, ['annee', 'année', 'year']),
+      vin: pick(r, ['vin']),
+      km: pick(r, ['km', 'kilometrage', 'kilométrage', 'mileage']),
+      pagilogId: pick(r, ['pagilog_id', 'pagilogid', 'id']),
+    }))
+    .filter((r) => r.plate.length > 0)
     .map((r, idx) => ({
       id: `veh_${now.toString(36)}_${idx}`,
-      plate: r.immatriculation.trim(),
-      make: r.marque ?? '',
-      model: r.modele ?? '',
-      year: r.annee ? parseInt(r.annee, 10) || undefined : undefined,
+      plate: r.plate.toUpperCase(),
+      make: r.make,
+      model: r.model,
+      year: r.year ? parseInt(r.year, 10) || undefined : undefined,
       vin: r.vin || undefined,
       mileageKm: parseInt(r.km, 10) || 0,
-      pagilogId: r.pagilog_id || undefined,
+      pagilogId: r.pagilogId || undefined,
       createdAt: now + idx,
     }));
+}
+
+/** Importe une flotte depuis un CSV PAGILOG (ou tout logiciel de parc). */
+export function importVehiclesCsv(csv: string, now: number): Vehicle[] {
+  return recordsToVehicles(parseCsv(csv), now);
 }
 
 // --- Adaptateur REST (optionnel) ------------------------------------------

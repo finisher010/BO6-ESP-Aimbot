@@ -6,7 +6,8 @@ import { RootStackParamList } from '@/navigation/RootNavigator';
 import { Badge, Button, Card, Muted, Title } from '@/components/ui';
 import { useFleetStore } from '@/store/useFleetStore';
 import { computeDue } from '@/services/maintenanceSchedule';
-import { buildSheetHtml, makeFormId } from '@/services/paperForm';
+import { buildSheetHtml, makeFormId, sheetCode } from '@/services/paperForm';
+import { qrSvg } from '@/services/qr';
 import { todayIso, formatIsoFr } from '@/utils/date';
 import { MaintenanceDue } from '@/types';
 import { colors, spacing } from '@/theme';
@@ -41,7 +42,8 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     if (!vehicle) return;
     try {
       const formId = makeFormId(Date.now());
-      const html = buildSheetHtml(vehicle, formId);
+      const svg = await qrSvg(sheetCode(vehicle.id, formId));
+      const html = buildSheetHtml(vehicle, formId, { qrSvg: svg });
       await Print.printAsync({ html });
     } catch (e: any) {
       Alert.alert('Impression', e.message ?? String(e));

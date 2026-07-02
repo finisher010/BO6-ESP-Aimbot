@@ -4,7 +4,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/RootNavigator';
 import { Badge, Button, Card, Muted, Title } from '@/components/ui';
-import { scanMaintenanceSheet, ParsedSheet } from '@/services/maintenanceOcr';
+import { scanMaintenanceSheet, ParsedSheet, parseHeader } from '@/services/maintenanceOcr';
+import { SheetHeader } from '@/types';
 import { useFleetStore } from '@/store/useFleetStore';
 import { colors, radius, spacing } from '@/theme';
 
@@ -17,6 +18,16 @@ export default function PaperScanScreen({ route, navigation }: Props) {
   const cameraRef = useRef<CameraView>(null);
   const [busy, setBusy] = useState(false);
   const [parsed, setParsed] = useState<ParsedSheet | null>(null);
+  // En-tête lu via le QR code (association fiable, sans OCR).
+  const [qrHeader, setQrHeader] = useState<SheetHeader | null>(null);
+
+  function onBarcode(data: string) {
+    if (qrHeader) return;
+    const header = parseHeader(data);
+    if (header && vehicles.some((v) => v.id === header.vehicleId)) {
+      setQrHeader(header);
+    }
+  }
 
   if (!permission) return <View style={styles.center}><ActivityIndicator color={colors.primary} /></View>;
   if (!permission.granted) {
@@ -31,8 +42,11 @@ export default function PaperScanScreen({ route, navigation }: Props) {
     );
   }
 
-  // Détermine le véhicule cible : en-tête lu > paramètre > null.
+  // Détermine le véhicule cible : QR > en-tête OCR > paramètre > null.
   function resolveVehicleId(p: ParsedSheet): string | null {
+    if (qrHeader && vehicles.some((v) => v.id === qrHeader.vehicleId)) {
+      return qrHeader.vehicleId;
+    }
     if (p.header && vehicles.some((v) => v.id === p.header!.vehicleId)) {
       return p.header.vehicleId;
     }
@@ -74,8 +88,23 @@ export default function PaperScanScreen({ route, navigation }: Props) {
   return (
     <ScrollView contentContainerStyle={{ padding: spacing(2), gap: spacing(1.5) }}>
       <View style={styles.cameraWrap}>
-        <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
+        <CameraView
+          ref={cameraRef}
+          style={{ flex: 1 }}
+          facing="back"
+          barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+          onBarcodeScanned={({ data }) => onBarcode(data)}
+        />
       </View>
+
+      {qrHeader && (
+        <Badge
+          label={`QR reconnu : ${
+            vehicles.find((v) => v.id === qrHeader.vehicleId)?.plate ?? qrHeader.vehicleId
+          }`}
+          color={colors.success}
+        />
+      )}
 
       <Button
         title={busy ? 'Lecture en cours…' : '📸 Lire la fiche'}
