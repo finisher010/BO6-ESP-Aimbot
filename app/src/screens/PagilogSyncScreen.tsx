@@ -32,13 +32,23 @@ export default function PagilogSyncScreen() {
   const [baseUrl, setBaseUrl] = useState(pagilog.baseUrl);
   const [apiKey, setApiKey] = useState(pagilog.apiKey);
   const [enabled, setEnabled] = useState(pagilog.enabled);
+  const [wsUrl, setWsUrl] = useState(pagilog.wsUrl ?? '');
+  const [directorySync, setDirectorySync] = useState(pagilog.directorySync ?? false);
+  const [pollSeconds, setPollSeconds] = useState(String(pagilog.pollSeconds ?? 30));
   const [importText, setImportText] = useState('');
   const [busy, setBusy] = useState(false);
 
   const pending = interventions.filter((i) => i.syncStatus !== 'synced');
 
   function saveConfig() {
-    setPagilog({ enabled, baseUrl: baseUrl.trim(), apiKey: apiKey.trim() });
+    setPagilog({
+      enabled,
+      baseUrl: baseUrl.trim(),
+      apiKey: apiKey.trim(),
+      wsUrl: wsUrl.trim(),
+      directorySync,
+      pollSeconds: Math.max(5, parseInt(pollSeconds, 10) || 30),
+    });
     Alert.alert('Enregistré', 'Configuration PAGILOG mise à jour.');
   }
 
@@ -186,6 +196,40 @@ export default function PagilogSyncScreen() {
           loading={busy}
           disabled={pending.length === 0}
         />
+      </Card>
+
+      <Card style={{ gap: spacing(1) }}>
+        <Title style={{ fontSize: 16 }}>Gestion centralisée des employés</Title>
+        <Muted>
+          Les employés et leurs droits sont gérés dans PAGILOG et synchronisés en
+          temps réel sur les téléphones. Renseignez une URL WebSocket pour le temps
+          réel instantané, sinon l’app rafraîchit périodiquement.
+        </Muted>
+        <View style={styles.rowBetween}>
+          <Muted style={{ color: colors.text }}>Gérer les employés depuis PAGILOG</Muted>
+          <Switch
+            value={directorySync}
+            onValueChange={setDirectorySync}
+            trackColor={{ true: colors.success }}
+          />
+        </View>
+        <TextInput
+          style={styles.input}
+          placeholder="URL WebSocket temps réel (wss://…) — optionnel"
+          placeholderTextColor={colors.textMuted}
+          autoCapitalize="none"
+          value={wsUrl}
+          onChangeText={setWsUrl}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Rafraîchissement (secondes) si pas de WebSocket"
+          placeholderTextColor={colors.textMuted}
+          keyboardType="number-pad"
+          value={pollSeconds}
+          onChangeText={setPollSeconds}
+        />
+        <Button title="💾 Enregistrer & (re)démarrer la synchro" onPress={saveConfig} />
       </Card>
 
       <Card style={{ gap: spacing(1) }}>

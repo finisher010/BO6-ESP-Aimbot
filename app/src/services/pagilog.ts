@@ -191,9 +191,22 @@ export interface PagilogConfig {
   enabled: boolean;
   baseUrl: string;
   apiKey: string;
+  /** URL WebSocket pour la synchro temps réel de l'annuaire (optionnelle). */
+  wsUrl?: string;
+  /** Active la gestion centralisée des employés/droits depuis PAGILOG. */
+  directorySync?: boolean;
+  /** Période de rafraîchissement (secondes) si pas de WebSocket. */
+  pollSeconds?: number;
 }
 
-export const EMPTY_CONFIG: PagilogConfig = { enabled: false, baseUrl: '', apiKey: '' };
+export const EMPTY_CONFIG: PagilogConfig = {
+  enabled: false,
+  baseUrl: '',
+  apiKey: '',
+  wsUrl: '',
+  directorySync: false,
+  pollSeconds: 30,
+};
 
 export interface SyncResult {
   ok: boolean;

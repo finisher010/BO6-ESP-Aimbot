@@ -187,5 +187,22 @@ export interface Employee {
   isAdmin: boolean;
   /** Permissions accordées explicitement (ignorées si isAdmin). */
   permissions: Partial<Record<PermissionKey, boolean>>;
+  /** Rôle appliqué (modèle de droits), à titre indicatif. */
+  roleId?: string;
+  /** true = profil géré de façon centralisée depuis PAGILOG (lecture seule locale). */
+  managed?: boolean;
+  /** Identifiant côté PAGILOG (mapping annuaire). */
+  pagilogId?: string;
   createdAt: number;
+}
+
+/** Modèle de rôle : un lot de fonctions attribuées en un clic. */
+export interface RoleTemplate {
+  id: string;
+  name: string;
+  description: string;
+  /** Si vrai, le rôle confère tous les droits (administrateur). */
+  isAdmin?: boolean;
+  /** Permissions accordées par ce rôle. */
+  permissions: PermissionKey[];
 }

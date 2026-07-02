@@ -16,12 +16,33 @@ export default function App() {
 
   const authHydrated = useAuthStore((s) => s.hydrated);
   const currentEmployeeId = useAuthStore((s) => s.currentEmployeeId);
+  const fleetHydrated = useFleetStore((s) => s.hydrated);
+  const pagilog = useFleetStore((s) => s.pagilog);
+  const startLiveSync = useAuthStore((s) => s.startLiveSync);
+  const stopLiveSync = useAuthStore((s) => s.stopLiveSync);
 
   useEffect(() => {
     hydrateTour();
     hydrateFleet();
     hydrateAuth();
   }, [hydrateTour, hydrateFleet, hydrateAuth]);
+
+  // (Re)démarre la synchro centralisée PAGILOG dès qu'elle est configurée/modifiée.
+  useEffect(() => {
+    if (!authHydrated || !fleetHydrated) return;
+    startLiveSync();
+    return () => stopLiveSync();
+  }, [
+    authHydrated,
+    fleetHydrated,
+    pagilog.directorySync,
+    pagilog.wsUrl,
+    pagilog.baseUrl,
+    pagilog.apiKey,
+    pagilog.pollSeconds,
+    startLiveSync,
+    stopLiveSync,
+  ]);
 
   return (
     <SafeAreaProvider>

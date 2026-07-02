@@ -18,15 +18,34 @@ un employé ne voit que ce à quoi il a droit.
 
 - **Profils employés** (écran *Employés & accès*, réservé aux administrateurs) :
   ajout/suppression, bascule administrateur, **code PIN** optionnel par profil.
+- **Rôles prêts à l'emploi** (`data/roles.ts`) : *Chauffeur*, *Mécanicien*,
+  *Gestionnaire de parc*, *Exploitant*, *Administrateur*. Un clic applique le bon
+  lot de fonctions (`services/auth.ts` → `applyRole()`).
 - **Attribution fine** : `data/permissions.ts` liste les fonctions
   (scanner adresses, optimiser, guidage, consulter le parc, saisir/imprimer/
   scanner une fiche, synchro PAGILOG, gérer les employés…). L'admin les active
-  une par une (`services/auth.ts` → `can()`).
+  une par une, ou via un rôle.
 - **Application des droits** : l'accueil masque les fonctions non autorisées, et
   les écrans sensibles (PAGILOG, gestion véhicules, fiches) revérifient la
   permission (défense en profondeur).
 - **Connexion** : au démarrage, on choisit son profil (PIN si défini). Au premier
   lancement, un profil **Administrateur** est créé automatiquement.
+
+### Gestion centralisée depuis PAGILOG (temps réel)
+
+Les employés et leurs droits peuvent être **gérés dans PAGILOG** et **synchronisés
+en temps réel** sur tous les téléphones (`services/directorySync.ts`) :
+
+- **Temps réel** : **WebSocket** (`wsUrl`) pour une mise à jour instantanée dès
+  qu'un droit change dans PAGILOG ; à défaut, **rafraîchissement périodique**
+  (`pollSeconds`). L'app applique chaque mise à jour immédiatement.
+- **Profils gérés** : les employés venant de PAGILOG sont marqués `managed`
+  (badge « PAGILOG », lecture seule dans l'app). Les profils locaux éventuels
+  sont conservés — un administrateur local reste disponible même hors-ligne.
+- **Mapping tolérant** : rôles PAGILOG, `permissions` en tableau/objet/chaîne,
+  `admin`, `pin`… Le schéma exact est le seul point à ajuster une fois l'API
+  PAGILOG connue (mappers testés unitairement).
+- Configuration dans l'écran **PAGILOG** (URL, clé, WebSocket, période).
 
 ## Module Entretien du parc
 
@@ -85,7 +104,8 @@ app/
 │  │  ├─ maintenanceOcr.ts      Lecture automatique de la fiche remplie
 │  │  ├─ pagilog.ts             Intégration PAGILOG (CSV + REST)
 │  │  └─ excel.ts               Import/export Excel (.xlsx)
-│  │  └─ auth.ts                Droits d'accès par employé (can, PIN)
+│  │  ├─ auth.ts                Droits d'accès par employé (can, PIN, applyRole)
+│  │  └─ directorySync.ts       Synchro temps réel des employés depuis PAGILOG
 │  ├─ store/
 │  │  ├─ useTourStore.ts        État tournée (zustand) + persistance
 │  │  ├─ useFleetStore.ts       État parc/entretien (zustand) + persistance
@@ -93,7 +113,8 @@ app/
 │  ├─ data/
 │  │  ├─ bridges.ts             Base locale de ponts bas (enrichissable)
 │  │  ├─ maintenancePlans.ts    Catalogue d'opérations + périodicités
-│  │  └─ permissions.ts         Catalogue des fonctions attribuables
+│  │  ├─ permissions.ts         Catalogue des fonctions attribuables
+│  │  └─ roles.ts               Rôles/modèles de droits prêts à l'emploi
 │  └─ utils/                    geo.ts (haversine, polyline…) · date.ts
 └─ src/__tests__/               Tests unitaires de la logique pure
 ```

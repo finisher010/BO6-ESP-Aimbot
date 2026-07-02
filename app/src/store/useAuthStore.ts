@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import { Employee, PermissionKey } from '@/types';
 import * as storage from '@/services/storage';
-import { can, defaultAdmin } from '@/services/auth';
+import { applyRole, can, defaultAdmin } from '@/services/auth';
+import { roleById } from '@/data/roles';
+import { useFleetStore } from '@/store/useFleetStore';
+import {
+  DirectoryStatus,
+  LiveSyncHandle,
+  startDirectorySync,
+} from '@/services/directorySync';
 
 let counter = 0;
 function makeId(): string {
@@ -9,10 +16,16 @@ function makeId(): string {
   return `emp_${Date.now().toString(36)}_${counter}`;
 }
 
+// Handle de la synchro temps réel (hors state : non sérialisable).
+let liveHandle: LiveSyncHandle | null = null;
+
 interface AuthState {
   employees: Employee[];
   currentEmployeeId: string | null;
   hydrated: boolean;
+  directoryStatus: DirectoryStatus;
+  directoryError?: string;
+  lastSyncAt?: number;
 
   hydrate: () => Promise<void>;
   current: () => Employee | null;
@@ -21,16 +34,23 @@ interface AuthState {
   addEmployee: (name: string, isAdmin: boolean) => Employee;
   updateEmployee: (id: string, patch: Partial<Employee>) => void;
   setPermission: (id: string, key: PermissionKey, value: boolean) => void;
+  applyRoleTo: (id: string, roleId: string) => void;
   removeEmployee: (id: string) => void;
 
   login: (id: string) => void;
   logout: () => void;
+
+  // Synchronisation centralisée PAGILOG (temps réel)
+  mergeRemoteEmployees: (remote: Employee[]) => void;
+  startLiveSync: () => void;
+  stopLiveSync: () => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   employees: [],
   currentEmployeeId: null,
   hydrated: false,
+  directoryStatus: 'off',
 
   hydrate: async () => {
     let [employees, currentEmployeeId] = await Promise.all([
@@ -81,8 +101,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setPermission: (id, key, value) => {
     const employees = get().employees.map((e) =>
-      e.id === id ? { ...e, permissions: { ...e.permissions, [key]: value } } : e
+      e.id === id ? { ...e, permissions: { ...e.permissions, [key]: value }, roleId: undefined } : e
     );
+    set({ employees });
+    storage.saveEmployees(employees);
+  },
+
+  applyRoleTo: (id, roleId) => {
+    const role = roleById(roleId);
+    if (!role) return;
+    const employees = get().employees.map((e) => (e.id === id ? applyRole(e, role) : e));
     set({ employees });
     storage.saveEmployees(employees);
   },
@@ -103,5 +131,40 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     set({ currentEmployeeId: null });
     storage.saveCurrentEmployeeId(null);
+  },
+
+  mergeRemoteEmployees: (remote) => {
+    // On conserve les profils locaux (non gérés) et on remplace l'ensemble
+    // des profils gérés par ceux reçus de PAGILOG.
+    const local = get().employees.filter((e) => !e.managed);
+    const employees = [...local, ...remote];
+    let currentEmployeeId = get().currentEmployeeId;
+    if (currentEmployeeId && !employees.some((e) => e.id === currentEmployeeId)) {
+      currentEmployeeId = null; // profil courant retiré côté PAGILOG
+    }
+    set({ employees, currentEmployeeId, lastSyncAt: Date.now() });
+    storage.saveEmployees(employees);
+    storage.saveCurrentEmployeeId(currentEmployeeId);
+  },
+
+  startLiveSync: () => {
+    const config = useFleetStore.getState().pagilog;
+    liveHandle?.stop();
+    liveHandle = null;
+    if (!config.directorySync || (!config.wsUrl && !config.baseUrl)) {
+      set({ directoryStatus: 'off', directoryError: undefined });
+      return;
+    }
+    liveHandle = startDirectorySync(
+      config,
+      (employees) => get().mergeRemoteEmployees(employees),
+      (status, error) => set({ directoryStatus: status, directoryError: error })
+    );
+  },
+
+  stopLiveSync: () => {
+    liveHandle?.stop();
+    liveHandle = null;
+    set({ directoryStatus: 'off', directoryError: undefined });
   },
 }));

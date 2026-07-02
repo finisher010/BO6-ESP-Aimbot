@@ -5,9 +5,19 @@ import { RootStackParamList } from '@/navigation/RootNavigator';
 import { Badge, Button, Card, Muted, Title } from '@/components/ui';
 import { useAuthStore } from '@/store/useAuthStore';
 import { PERMISSION_CATALOG, PERMISSION_GROUPS } from '@/data/permissions';
+import { ROLE_TEMPLATES, roleById } from '@/data/roles';
 import { normalizePin } from '@/services/auth';
+import { DirectoryStatus } from '@/services/directorySync';
 import { Employee } from '@/types';
 import { colors, radius, spacing } from '@/theme';
+
+const STATUS_LABEL: Record<DirectoryStatus, { text: string; color: string }> = {
+  off: { text: 'Synchro PAGILOG désactivée', color: colors.textMuted },
+  connecting: { text: 'Connexion à PAGILOG…', color: colors.warning },
+  live: { text: 'Synchronisé en temps réel (WebSocket)', color: colors.success },
+  polling: { text: 'Synchronisé (rafraîchissement périodique)', color: colors.success },
+  error: { text: 'Erreur de synchronisation PAGILOG', color: colors.danger },
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ManageEmployees'>;
 
@@ -15,8 +25,11 @@ export default function ManageEmployeesScreen(_props: Props) {
   const employees = useAuthStore((s) => s.employees);
   const current = useAuthStore((s) => s.current());
   const addEmployee = useAuthStore((s) => s.addEmployee);
+  const directoryStatus = useAuthStore((s) => s.directoryStatus);
+  const directoryError = useAuthStore((s) => s.directoryError);
   const [name, setName] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const status = STATUS_LABEL[directoryStatus];
 
   if (!current?.isAdmin) {
     return (
@@ -31,6 +44,18 @@ export default function ManageEmployeesScreen(_props: Props) {
 
   return (
     <ScrollView contentContainerStyle={{ padding: spacing(2), gap: spacing(1.5) }}>
+      <Card style={{ gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing(1) }}>
+          <View style={[styles.statusDot, { backgroundColor: status.color }]} />
+          <Muted style={{ color: colors.text, flex: 1 }}>{status.text}</Muted>
+        </View>
+        {directoryError ? <Muted style={{ color: colors.danger }}>{directoryError}</Muted> : null}
+        <Muted>
+          Les profils marqués « PAGILOG » sont gérés de façon centralisée et se
+          mettent à jour automatiquement. Configurez la connexion dans l’écran PAGILOG.
+        </Muted>
+      </Card>
+
       <Card style={{ gap: spacing(1) }}>
         <Title style={{ fontSize: 16 }}>Ajouter un employé</Title>
         <View style={{ flexDirection: 'row', gap: spacing(1) }}>
@@ -79,8 +104,10 @@ function EmployeeCard({
   const employees = useAuthStore((s) => s.employees);
   const updateEmployee = useAuthStore((s) => s.updateEmployee);
   const setPermission = useAuthStore((s) => s.setPermission);
+  const applyRoleTo = useAuthStore((s) => s.applyRoleTo);
   const removeEmployee = useAuthStore((s) => s.removeEmployee);
   const [pinInput, setPinInput] = useState(emp.pin ?? '');
+  const roleName = roleById(emp.roleId)?.name;
 
   const adminCount = employees.filter((e) => e.isAdmin).length;
   const grantedCount = emp.isAdmin
@@ -118,15 +145,46 @@ function EmployeeCard({
         <View style={{ flex: 1 }}>
           <Title style={{ fontSize: 16 }}>{emp.name}</Title>
           <Muted>
+            {roleName ? `${roleName} · ` : ''}
             {emp.isAdmin ? 'Administrateur · tous les accès' : `${grantedCount}/${PERMISSION_CATALOG.length} fonctions`}
           </Muted>
         </View>
+        {emp.managed ? <Badge label="PAGILOG" color={colors.primary} /> : null}
         {emp.pin ? <Badge label="🔒" color={colors.textMuted} /> : null}
         <Muted>{expanded ? '▲' : '▼'}</Muted>
       </TouchableOpacity>
 
-      {expanded && (
+      {expanded && emp.managed && (
+        <Muted>
+          Profil géré depuis PAGILOG (lecture seule). Les droits et le rôle sont
+          définis dans PAGILOG et synchronisés automatiquement.
+        </Muted>
+      )}
+
+      {expanded && !emp.managed && (
         <View style={{ gap: spacing(1) }}>
+          <Muted style={{ fontWeight: '700', color: colors.primary }}>
+            Appliquer un rôle (modèle de droits)
+          </Muted>
+          <View style={styles.chipsRow}>
+            {ROLE_TEMPLATES.map((r) => (
+              <TouchableOpacity
+                key={r.id}
+                onPress={() => applyRoleTo(emp.id, r.id)}
+                style={[styles.chip, emp.roleId === r.id && styles.chipActive]}
+              >
+                <Muted
+                  style={{
+                    color: emp.roleId === r.id ? '#fff' : colors.text,
+                    fontWeight: '700',
+                  }}
+                >
+                  {r.name}
+                </Muted>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <View style={styles.rowBetween}>
             <Muted style={{ color: colors.text }}>Administrateur (tous les droits)</Muted>
             <Switch value={emp.isAdmin} onValueChange={toggleAdmin} trackColor={{ true: colors.success }} />
@@ -189,4 +247,15 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing(1) },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   permRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2 },
+  statusDot: { width: 10, height: 10, borderRadius: 5 },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing(1) },
+  chip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+  },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
 });
