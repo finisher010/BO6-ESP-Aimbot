@@ -76,3 +76,85 @@ export interface NavStep {
   maneuver: string;
   modifier?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Module Entretien du parc de véhicules (maintenance)
+// ---------------------------------------------------------------------------
+
+export interface Vehicle {
+  id: string;
+  /** Immatriculation, sert aussi de clé d'échange avec PAGILOG. */
+  plate: string;
+  make: string;
+  model: string;
+  year?: number;
+  vin?: string;
+  /** Kilométrage courant (dernier relevé connu). */
+  mileageKm: number;
+  /** Identifiant PAGILOG si connu (mapping). */
+  pagilogId?: string;
+  createdAt: number;
+}
+
+/** Une opération type du catalogue (vidange, freins…). */
+export interface OperationDef {
+  code: string;
+  label: string;
+  /** Périodicité recommandée en km (0 = pas de périodicité km). */
+  intervalKm: number;
+  /** Périodicité recommandée en mois (0 = aucune). */
+  intervalMonths: number;
+}
+
+/** Opération réellement effectuée/à effectuer sur une fiche. */
+export interface InterventionOperation {
+  code: string;
+  label: string;
+  done: boolean;
+}
+
+export interface Part {
+  reference: string;
+  label: string;
+  qty: number;
+  unitCostEuros?: number;
+}
+
+export type InterventionSource = 'app' | 'paper-ocr' | 'pagilog';
+export type SyncStatus = 'local' | 'synced' | 'error';
+
+export interface Intervention {
+  id: string;
+  vehicleId: string;
+  /** ISO date (YYYY-MM-DD). */
+  date: string;
+  mileageKm: number;
+  operations: InterventionOperation[];
+  parts: Part[];
+  laborHours?: number;
+  costEuros?: number;
+  mechanic?: string;
+  notes?: string;
+  source: InterventionSource;
+  syncStatus: SyncStatus;
+  /** Renseigné après scan papier : confiance et champs bruts. */
+  ocrRawText?: string;
+  createdAt: number;
+}
+
+/** Échéance calculée pour une opération sur un véhicule. */
+export interface MaintenanceDue {
+  vehicle: Vehicle;
+  operation: OperationDef;
+  /** Km restants avant échéance (négatif = en retard). */
+  kmRemaining: number | null;
+  /** Jours restants avant échéance (négatif = en retard). */
+  daysRemaining: number | null;
+  severity: 'ok' | 'soon' | 'overdue';
+}
+
+/** En-tête machine d'une fiche papier, lu automatiquement au scan. */
+export interface SheetHeader {
+  vehicleId: string;
+  formId: string;
+}

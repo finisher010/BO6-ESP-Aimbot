@@ -1,11 +1,39 @@
-# Tournée Optimizer — Android & iPhone
+# Tournée Optimizer & Entretien du parc — Android & iPhone
 
-Application mobile pour **chauffeurs-livreurs** : capture d'adresses par la caméra,
-optimisation de tournée évitant les **ponts trop bas**, et **guidage vocal GPS** précis.
+Application mobile pour **transporteurs** réunissant deux modules :
+
+1. **Tournée** — capture d'adresses par la caméra, optimisation de tournée évitant
+   les **ponts trop bas**, et **guidage vocal GPS** précis.
+2. **Entretien du parc** — suivi des véhicules et des échéances d'entretien,
+   **fiche papier imprimable** pour le mécanicien, **lecture automatique (OCR)** de
+   la fiche remplie, et **intégration PAGILOG** (API REST + export/import CSV).
 
 Un seul code (Expo / React Native) tourne sur **Android et iPhone**.
 
-## Fonctionnalités
+## Module Entretien du parc
+
+| Demande | Réalisation |
+|---|---|
+| 🔧 Entretien du parc en lien avec PAGILOG | `services/pagilog.ts` : mapping canonique, export/import **CSV** (`;`, UTF-8) et adaptateur **REST** configurable (`PagilogSyncScreen`) |
+| 📱 Application téléphone | Écrans `Fleet`, `VehicleDetail`, `InterventionForm` : parc, échéances (km + date), historique, saisie d'intervention |
+| 📄 Format papier pour le mécanicien | `services/paperForm.ts` → fiche HTML imprimable (`expo-print`) avec ancres lisibles machine |
+| 🤖 Lecture automatique de ce qu'il remplit | `services/maintenanceOcr.ts` : OCR de la fiche → `parseMaintenanceSheet` → association **automatique** au véhicule via le code d'en-tête, cases cochées, km, date, pièces, coût |
+
+### Flux « papier → numérique »
+
+1. Depuis un véhicule : **Imprimer fiche papier** (chaque fiche porte un code
+   `FE:<véhicule>:<fiche>`).
+2. Le mécanicien remplit à la main : coche les cases, écrit le km, la date, etc.
+3. **Scanner fiche** : l'app lit la photo, reconnaît le véhicule via le code,
+   pré-remplit la fiche numérique. On vérifie, on enregistre.
+4. **Synchronisation PAGILOG** : envoi REST des fiches, ou export/import CSV.
+
+> **PAGILOG** : le format d'échange exact n'étant pas public, l'intégration est
+> isolée dans `services/pagilog.ts`. L'export/import CSV fonctionne immédiatement ;
+> l'API REST s'active dans l'écran PAGILOG dès que l'URL et la clé sont fournies
+> (un seul fichier à ajuster pour coller au contrat réel).
+
+## Module Tournée
 
 | Demande | Réalisation |
 |---|---|
@@ -20,7 +48,8 @@ Un seul code (Expo / React Native) tourne sur **Android et iPhone**.
 app/
 ├─ App.tsx                      Point d'entrée + hydratation du store
 ├─ src/
-│  ├─ screens/                  Home · Capture · Stops · Route · Navigation · Settings
+│  ├─ screens/                  Tournée : Home · Capture · Stops · Route · Navigation · Settings
+│  │                            Entretien : Fleet · VehicleDetail · InterventionForm · PaperScan · PagilogSync
 │  ├─ services/
 │  │  ├─ ocr.ts                 Photo → texte → adresse (OCR.space, remplaçable par ML Kit)
 │  │  ├─ geocoding.ts           Adresse → coordonnées (Nominatim/OSM)
@@ -29,10 +58,18 @@ app/
 │  │  ├─ bridges.ts             Détection des ponts trop bas sur le tracé
 │  │  ├─ navEngine.ts           Logique de guidage (étape courante, alertes pont)
 │  │  ├─ voice.ts               Synthèse vocale française (expo-speech)
-│  │  └─ location.ts            GPS haute précision (expo-location)
-│  ├─ store/useTourStore.ts     État global (zustand) + persistance
-│  ├─ data/bridges.ts           Base locale de ponts bas (enrichissable)
-│  └─ utils/geo.ts              Haversine, cap, distance segment, polyline
+│  │  ├─ location.ts            GPS haute précision (expo-location)
+│  │  ├─ maintenanceSchedule.ts Échéances d'entretien (km + date)
+│  │  ├─ paperForm.ts           Fiche papier imprimable (HTML/PDF)
+│  │  ├─ maintenanceOcr.ts      Lecture automatique de la fiche remplie
+│  │  └─ pagilog.ts             Intégration PAGILOG (CSV + REST)
+│  ├─ store/
+│  │  ├─ useTourStore.ts        État tournée (zustand) + persistance
+│  │  └─ useFleetStore.ts       État parc/entretien (zustand) + persistance
+│  ├─ data/
+│  │  ├─ bridges.ts             Base locale de ponts bas (enrichissable)
+│  │  └─ maintenancePlans.ts    Catalogue d'opérations + périodicités
+│  └─ utils/                    geo.ts (haversine, polyline…) · date.ts
 └─ src/__tests__/               Tests unitaires de la logique pure
 ```
 

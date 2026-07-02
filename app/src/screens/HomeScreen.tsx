@@ -49,6 +49,12 @@ export default function HomeScreen({ navigation }: Props) {
         />
       )}
 
+      <Button
+        title="🔧 Entretien du parc"
+        variant="secondary"
+        onPress={() => navigation.navigate('Fleet')}
+      />
+
       <Card style={{ marginTop: spacing(1) }}>
         <Muted>
           Profil véhicule : hauteur {vehicle.heightM.toFixed(2)} m · marge{' '}

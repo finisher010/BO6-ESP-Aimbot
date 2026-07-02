@@ -3,13 +3,16 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from '@/navigation/RootNavigator';
 import { useTourStore } from '@/store/useTourStore';
+import { useFleetStore } from '@/store/useFleetStore';
 
 export default function App() {
-  const hydrate = useTourStore((s) => s.hydrate);
+  const hydrateTour = useTourStore((s) => s.hydrate);
+  const hydrateFleet = useFleetStore((s) => s.hydrate);
 
   useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+    hydrateTour();
+    hydrateFleet();
+  }, [hydrateTour, hydrateFleet]);
 
   return (
     <SafeAreaProvider>

@@ -2,12 +2,18 @@ import React from 'react';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { colors } from '@/theme';
+import { ParsedSheet } from '@/services/maintenanceOcr';
 import HomeScreen from '@/screens/HomeScreen';
 import CaptureScreen from '@/screens/CaptureScreen';
 import StopsScreen from '@/screens/StopsScreen';
 import RouteScreen from '@/screens/RouteScreen';
 import NavigationScreen from '@/screens/NavigationScreen';
 import SettingsScreen from '@/screens/SettingsScreen';
+import FleetScreen from '@/screens/FleetScreen';
+import VehicleDetailScreen from '@/screens/VehicleDetailScreen';
+import InterventionFormScreen from '@/screens/InterventionFormScreen';
+import PaperScanScreen from '@/screens/PaperScanScreen';
+import PagilogSyncScreen from '@/screens/PagilogSyncScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -16,6 +22,11 @@ export type RootStackParamList = {
   Route: undefined;
   Navigation: undefined;
   Settings: undefined;
+  Fleet: undefined;
+  VehicleDetail: { vehicleId: string };
+  InterventionForm: { vehicleId: string; prefill?: ParsedSheet };
+  PaperScan: { vehicleId?: string };
+  PagilogSync: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -43,12 +54,17 @@ export default function RootNavigator() {
           contentStyle: { backgroundColor: colors.bg },
         }}
       >
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Tournée Optimizer' }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Accueil' }} />
         <Stack.Screen name="Capture" component={CaptureScreen} options={{ title: 'Scanner une adresse' }} />
         <Stack.Screen name="Stops" component={StopsScreen} options={{ title: 'Mes arrêts' }} />
         <Stack.Screen name="Route" component={RouteScreen} options={{ title: 'Tournée optimisée' }} />
         <Stack.Screen name="Navigation" component={NavigationScreen} options={{ title: 'Guidage', headerShown: false }} />
         <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Paramètres' }} />
+        <Stack.Screen name="Fleet" component={FleetScreen} options={{ title: 'Entretien du parc' }} />
+        <Stack.Screen name="VehicleDetail" component={VehicleDetailScreen} options={{ title: 'Véhicule' }} />
+        <Stack.Screen name="InterventionForm" component={InterventionFormScreen} options={{ title: 'Fiche d’entretien' }} />
+        <Stack.Screen name="PaperScan" component={PaperScanScreen} options={{ title: 'Scanner une fiche' }} />
+        <Stack.Screen name="PagilogSync" component={PagilogSyncScreen} options={{ title: 'PAGILOG' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
