@@ -10,6 +10,24 @@ Application mobile pour **transporteurs** réunissant deux modules :
 
 Un seul code (Expo / React Native) tourne sur **Android et iPhone**.
 
+## Employés & droits d'accès
+
+Chaque **fonction** de l'application peut être **attribuée ou non** à chaque
+employé. Un administrateur gère les profils et coche les fonctions autorisées ;
+un employé ne voit que ce à quoi il a droit.
+
+- **Profils employés** (écran *Employés & accès*, réservé aux administrateurs) :
+  ajout/suppression, bascule administrateur, **code PIN** optionnel par profil.
+- **Attribution fine** : `data/permissions.ts` liste les fonctions
+  (scanner adresses, optimiser, guidage, consulter le parc, saisir/imprimer/
+  scanner une fiche, synchro PAGILOG, gérer les employés…). L'admin les active
+  une par une (`services/auth.ts` → `can()`).
+- **Application des droits** : l'accueil masque les fonctions non autorisées, et
+  les écrans sensibles (PAGILOG, gestion véhicules, fiches) revérifient la
+  permission (défense en profondeur).
+- **Connexion** : au démarrage, on choisit son profil (PIN si défini). Au premier
+  lancement, un profil **Administrateur** est créé automatiquement.
+
 ## Module Entretien du parc
 
 | Demande | Réalisation |
@@ -51,6 +69,7 @@ app/
 ├─ src/
 │  ├─ screens/                  Tournée : Home · Capture · Stops · Route · Navigation · Settings
 │  │                            Entretien : Fleet · VehicleDetail · InterventionForm · PaperScan · PagilogSync
+│  │                            Accès : ManageEmployees · SwitchProfile (+ ProfilePicker)
 │  ├─ services/
 │  │  ├─ ocr.ts                 Photo → texte → adresse (OCR.space, remplaçable par ML Kit)
 │  │  ├─ geocoding.ts           Adresse → coordonnées (Nominatim/OSM)
@@ -66,12 +85,15 @@ app/
 │  │  ├─ maintenanceOcr.ts      Lecture automatique de la fiche remplie
 │  │  ├─ pagilog.ts             Intégration PAGILOG (CSV + REST)
 │  │  └─ excel.ts               Import/export Excel (.xlsx)
+│  │  └─ auth.ts                Droits d'accès par employé (can, PIN)
 │  ├─ store/
 │  │  ├─ useTourStore.ts        État tournée (zustand) + persistance
-│  │  └─ useFleetStore.ts       État parc/entretien (zustand) + persistance
+│  │  ├─ useFleetStore.ts       État parc/entretien (zustand) + persistance
+│  │  └─ useAuthStore.ts        Employés, profil courant, permissions
 │  ├─ data/
 │  │  ├─ bridges.ts             Base locale de ponts bas (enrichissable)
-│  │  └─ maintenancePlans.ts    Catalogue d'opérations + périodicités
+│  │  ├─ maintenancePlans.ts    Catalogue d'opérations + périodicités
+│  │  └─ permissions.ts         Catalogue des fonctions attribuables
 │  └─ utils/                    geo.ts (haversine, polyline…) · date.ts
 └─ src/__tests__/               Tests unitaires de la logique pure
 ```

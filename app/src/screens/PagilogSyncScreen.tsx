@@ -5,6 +5,7 @@ import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { Button, Card, Muted, Title } from '@/components/ui';
 import { useFleetStore } from '@/store/useFleetStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import {
   exportInterventionsCsv,
   exportVehiclesCsv,
@@ -20,6 +21,7 @@ import { Vehicle } from '@/types';
 import { colors, radius, spacing } from '@/theme';
 
 export default function PagilogSyncScreen() {
+  const canSync = useAuthStore((s) => s.can('pagilog.sync'));
   const vehicles = useFleetStore((s) => s.vehicles);
   const interventions = useFleetStore((s) => s.interventions);
   const setVehicles = useFleetStore((s) => s.setVehicles);
@@ -134,6 +136,17 @@ export default function PagilogSyncScreen() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!canSync) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing(3) }}>
+        <Title>Accès non autorisé</Title>
+        <Muted style={{ textAlign: 'center', marginTop: spacing(1) }}>
+          La synchronisation PAGILOG n’est pas attribuée à votre profil.
+        </Muted>
+      </View>
+    );
   }
 
   return (

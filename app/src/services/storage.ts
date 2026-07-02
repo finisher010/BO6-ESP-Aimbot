@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Bridge, Intervention, Stop, Vehicle, VehicleProfile } from '@/types';
+import { Bridge, Employee, Intervention, Stop, Vehicle, VehicleProfile } from '@/types';
 import { PagilogConfig } from './pagilog';
 
 const KEYS = {
@@ -9,6 +9,8 @@ const KEYS = {
   fleet: 'fleet.vehicles',
   interventions: 'fleet.interventions',
   pagilog: 'fleet.pagilogConfig',
+  employees: 'auth.employees',
+  currentEmployee: 'auth.currentEmployee',
 };
 
 export async function loadStops(): Promise<Stop[]> {
@@ -65,4 +67,24 @@ export async function loadPagilogConfig(): Promise<PagilogConfig | null> {
 
 export async function savePagilogConfig(config: PagilogConfig): Promise<void> {
   await AsyncStorage.setItem(KEYS.pagilog, JSON.stringify(config));
+}
+
+// --- Employés & droits d'accès --------------------------------------------
+
+export async function loadEmployees(): Promise<Employee[]> {
+  const raw = await AsyncStorage.getItem(KEYS.employees);
+  return raw ? (JSON.parse(raw) as Employee[]) : [];
+}
+
+export async function saveEmployees(employees: Employee[]): Promise<void> {
+  await AsyncStorage.setItem(KEYS.employees, JSON.stringify(employees));
+}
+
+export async function loadCurrentEmployeeId(): Promise<string | null> {
+  return AsyncStorage.getItem(KEYS.currentEmployee);
+}
+
+export async function saveCurrentEmployeeId(id: string | null): Promise<void> {
+  if (id) await AsyncStorage.setItem(KEYS.currentEmployee, id);
+  else await AsyncStorage.removeItem(KEYS.currentEmployee);
 }

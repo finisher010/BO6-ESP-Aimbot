@@ -14,6 +14,8 @@ import VehicleDetailScreen from '@/screens/VehicleDetailScreen';
 import InterventionFormScreen from '@/screens/InterventionFormScreen';
 import PaperScanScreen from '@/screens/PaperScanScreen';
 import PagilogSyncScreen from '@/screens/PagilogSyncScreen';
+import ManageEmployeesScreen from '@/screens/ManageEmployeesScreen';
+import SwitchProfileScreen from '@/screens/SwitchProfileScreen';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -27,6 +29,8 @@ export type RootStackParamList = {
   InterventionForm: { vehicleId: string; prefill?: ParsedSheet };
   PaperScan: { vehicleId?: string };
   PagilogSync: undefined;
+  ManageEmployees: undefined;
+  SwitchProfile: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -65,6 +69,8 @@ export default function RootNavigator() {
         <Stack.Screen name="InterventionForm" component={InterventionFormScreen} options={{ title: 'Fiche d’entretien' }} />
         <Stack.Screen name="PaperScan" component={PaperScanScreen} options={{ title: 'Scanner une fiche' }} />
         <Stack.Screen name="PagilogSync" component={PagilogSyncScreen} options={{ title: 'PAGILOG' }} />
+        <Stack.Screen name="ManageEmployees" component={ManageEmployeesScreen} options={{ title: 'Employés & accès' }} />
+        <Stack.Screen name="SwitchProfile" component={SwitchProfileScreen} options={{ title: 'Changer de profil' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

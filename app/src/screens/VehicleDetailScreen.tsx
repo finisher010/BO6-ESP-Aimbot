@@ -5,6 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/RootNavigator';
 import { Badge, Button, Card, Muted, Title } from '@/components/ui';
 import { useFleetStore } from '@/store/useFleetStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { computeDue } from '@/services/maintenanceSchedule';
 import { buildSheetHtml, makeFormId, sheetCode } from '@/services/paperForm';
 import { qrSvg } from '@/services/qr';
@@ -27,6 +28,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
     s.interventions.filter((i) => i.vehicleId === vehicleId)
   );
   const removeVehicle = useFleetStore((s) => s.removeVehicle);
+  const can = useAuthStore((s) => s.can);
 
   if (!vehicle) {
     return (
@@ -63,19 +65,27 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
       </Card>
 
       <View style={{ gap: spacing(1) }}>
-        <Button
-          title="📝 Nouvelle fiche (sur le téléphone)"
-          variant="success"
-          onPress={() => navigation.navigate('InterventionForm', { vehicleId })}
-        />
-        <View style={{ flexDirection: 'row', gap: spacing(1) }}>
-          <Button title="🖨️ Imprimer fiche papier" variant="secondary" onPress={printSheet} style={{ flex: 1 }} />
+        {can('fleet.intervention.create') && (
           <Button
-            title="📷 Scanner fiche"
-            onPress={() => navigation.navigate('PaperScan', { vehicleId })}
-            style={{ flex: 1 }}
+            title="📝 Nouvelle fiche (sur le téléphone)"
+            variant="success"
+            onPress={() => navigation.navigate('InterventionForm', { vehicleId })}
           />
-        </View>
+        )}
+        {(can('fleet.paper.print') || can('fleet.paper.scan')) && (
+          <View style={{ flexDirection: 'row', gap: spacing(1) }}>
+            {can('fleet.paper.print') && (
+              <Button title="🖨️ Imprimer fiche papier" variant="secondary" onPress={printSheet} style={{ flex: 1 }} />
+            )}
+            {can('fleet.paper.scan') && (
+              <Button
+                title="📷 Scanner fiche"
+                onPress={() => navigation.navigate('PaperScan', { vehicleId })}
+                style={{ flex: 1 }}
+              />
+            )}
+          </View>
+        )}
       </View>
 
       <Card style={{ gap: spacing(1) }}>
@@ -112,6 +122,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
         )}
       </Card>
 
+      {can('fleet.vehicle.manage') && (
       <Button
         title="🗑️ Supprimer le véhicule"
         variant="danger"
@@ -129,6 +140,7 @@ export default function VehicleDetailScreen({ route, navigation }: Props) {
           ])
         }
       />
+      )}
     </ScrollView>
   );
 }

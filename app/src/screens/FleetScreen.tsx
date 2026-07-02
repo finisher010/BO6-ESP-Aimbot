@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/RootNavigator';
 import { Badge, Button, Card, Muted, Title } from '@/components/ui';
 import { useFleetStore } from '@/store/useFleetStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { computeDue, dueCount } from '@/services/maintenanceSchedule';
 import { todayIso } from '@/utils/date';
 import { colors, radius, spacing } from '@/theme';
@@ -14,6 +15,9 @@ export default function FleetScreen({ navigation }: Props) {
   const vehicles = useFleetStore((s) => s.vehicles);
   const interventions = useFleetStore((s) => s.interventions);
   const addVehicle = useFleetStore((s) => s.addVehicle);
+  const can = useAuthStore((s) => s.can);
+  const canManage = can('fleet.vehicle.manage');
+  const canSync = can('pagilog.sync');
 
   const [adding, setAdding] = useState(false);
   const [plate, setPlate] = useState('');
@@ -44,12 +48,14 @@ export default function FleetScreen({ navigation }: Props) {
         contentContainerStyle={{ padding: spacing(2), gap: spacing(1.5), paddingBottom: spacing(12) }}
         ListHeaderComponent={
           <View style={{ gap: spacing(1.5), marginBottom: spacing(0.5) }}>
-            <Button
-              title="🔄 Synchronisation PAGILOG"
-              variant="secondary"
-              onPress={() => navigation.navigate('PagilogSync')}
-            />
-            {adding ? (
+            {canSync && (
+              <Button
+                title="🔄 Synchronisation PAGILOG"
+                variant="secondary"
+                onPress={() => navigation.navigate('PagilogSync')}
+              />
+            )}
+            {!canManage ? null : adding ? (
               <Card style={{ gap: spacing(1) }}>
                 <Title style={{ fontSize: 16 }}>Nouveau véhicule</Title>
                 <TextInput style={styles.input} placeholder="Immatriculation *" placeholderTextColor={colors.textMuted} autoCapitalize="characters" value={plate} onChangeText={setPlate} />

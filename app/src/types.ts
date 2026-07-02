@@ -158,3 +158,34 @@ export interface SheetHeader {
   vehicleId: string;
   formId: string;
 }
+
+// ---------------------------------------------------------------------------
+// Employés & droits d'accès aux fonctions de l'application
+// ---------------------------------------------------------------------------
+
+/** Clé d'une fonction de l'app pouvant être attribuée ou non à un employé. */
+export type PermissionKey =
+  | 'tour.capture'
+  | 'tour.stops'
+  | 'tour.optimize'
+  | 'tour.navigate'
+  | 'tour.settings'
+  | 'fleet.view'
+  | 'fleet.vehicle.manage'
+  | 'fleet.intervention.create'
+  | 'fleet.paper.print'
+  | 'fleet.paper.scan'
+  | 'pagilog.sync'
+  | 'admin.employees';
+
+export interface Employee {
+  id: string;
+  name: string;
+  /** Code PIN à 4 chiffres (optionnel) pour protéger le profil. */
+  pin?: string;
+  /** Un administrateur possède toutes les permissions. */
+  isAdmin: boolean;
+  /** Permissions accordées explicitement (ignorées si isAdmin). */
+  permissions: Partial<Record<PermissionKey, boolean>>;
+  createdAt: number;
+}
