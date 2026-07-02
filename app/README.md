@@ -42,6 +42,9 @@ en temps réel** sur tous les téléphones (`services/directorySync.ts`) :
 - **Profils gérés** : les employés venant de PAGILOG sont marqués `managed`
   (badge « PAGILOG », lecture seule dans l'app). Les profils locaux éventuels
   sont conservés — un administrateur local reste disponible même hors-ligne.
+- **Envoi bidirectionnel** : un employé créé localement peut être **poussé vers
+  PAGILOG** (bouton « Envoyer vers PAGILOG »). Il revient alors géré de façon
+  centralisée, sans doublon (déduplication par identifiant).
 - **Mapping tolérant** : rôles PAGILOG, `permissions` en tableau/objet/chaîne,
   `admin`, `pin`… Le schéma exact est le seul point à ajuster une fois l'API
   PAGILOG connue (mappers testés unitairement).

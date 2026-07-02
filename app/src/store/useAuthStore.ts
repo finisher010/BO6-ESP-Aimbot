@@ -7,6 +7,7 @@ import { useFleetStore } from '@/store/useFleetStore';
 import {
   DirectoryStatus,
   LiveSyncHandle,
+  pushEmployee,
   startDirectorySync,
 } from '@/services/directorySync';
 
@@ -44,6 +45,7 @@ interface AuthState {
   mergeRemoteEmployees: (remote: Employee[]) => void;
   startLiveSync: () => void;
   stopLiveSync: () => void;
+  pushEmployeeToPagilog: (id: string) => Promise<{ ok: boolean; message: string }>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -134,13 +136,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   mergeRemoteEmployees: (remote) => {
-    // On conserve les profils locaux (non gérés) et on remplace l'ensemble
-    // des profils gérés par ceux reçus de PAGILOG.
-    const local = get().employees.filter((e) => !e.managed);
+    // Ids PAGILOG reçus : un profil local poussé revient géré → on retire le
+    // doublon local correspondant (son id local = pagilogId du profil géré).
+    const remotePagilogIds = new Set(
+      remote.map((e) => e.pagilogId).filter((v): v is string => !!v)
+    );
+    const local = get().employees.filter(
+      (e) => !e.managed && !remotePagilogIds.has(e.id)
+    );
     const employees = [...local, ...remote];
+
     let currentEmployeeId = get().currentEmployeeId;
     if (currentEmployeeId && !employees.some((e) => e.id === currentEmployeeId)) {
-      currentEmployeeId = null; // profil courant retiré côté PAGILOG
+      // Le profil courant a peut-être été « promu » en profil géré (après push).
+      const promoted = remote.find((e) => e.pagilogId === currentEmployeeId);
+      currentEmployeeId = promoted ? promoted.id : null;
     }
     set({ employees, currentEmployeeId, lastSyncAt: Date.now() });
     storage.saveEmployees(employees);
@@ -166,5 +176,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     liveHandle?.stop();
     liveHandle = null;
     set({ directoryStatus: 'off', directoryError: undefined });
+  },
+
+  pushEmployeeToPagilog: async (id) => {
+    const config = useFleetStore.getState().pagilog;
+    const emp = get().employees.find((e) => e.id === id);
+    if (!emp) return { ok: false, message: 'Employé introuvable.' };
+    if (!config.baseUrl) {
+      return { ok: false, message: 'Renseignez d’abord l’URL de l’API PAGILOG.' };
+    }
+    try {
+      await pushEmployee(config, emp);
+      // Marque le profil comme géré ; la prochaine synchro le confirmera.
+      get().updateEmployee(id, { managed: true, pagilogId: emp.pagilogId ?? emp.id });
+      return { ok: true, message: `${emp.name} envoyé vers PAGILOG.` };
+    } catch (e: any) {
+      return { ok: false, message: e?.message ?? String(e) };
+    }
   },
 }));

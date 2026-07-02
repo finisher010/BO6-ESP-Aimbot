@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/RootNavigator';
 import { Badge, Button, Card, Muted, Title } from '@/components/ui';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useFleetStore } from '@/store/useFleetStore';
 import { PERMISSION_CATALOG, PERMISSION_GROUPS } from '@/data/permissions';
 import { ROLE_TEMPLATES, roleById } from '@/data/roles';
 import { normalizePin } from '@/services/auth';
@@ -106,8 +107,18 @@ function EmployeeCard({
   const setPermission = useAuthStore((s) => s.setPermission);
   const applyRoleTo = useAuthStore((s) => s.applyRoleTo);
   const removeEmployee = useAuthStore((s) => s.removeEmployee);
+  const pushEmployeeToPagilog = useAuthStore((s) => s.pushEmployeeToPagilog);
+  const pagilogConfigured = useFleetStore((s) => !!s.pagilog.baseUrl);
   const [pinInput, setPinInput] = useState(emp.pin ?? '');
+  const [pushing, setPushing] = useState(false);
   const roleName = roleById(emp.roleId)?.name;
+
+  async function pushToPagilog() {
+    setPushing(true);
+    const res = await pushEmployeeToPagilog(emp.id);
+    setPushing(false);
+    Alert.alert(res.ok ? 'Envoyé' : 'Échec', res.message);
+  }
 
   const adminCount = employees.filter((e) => e.isAdmin).length;
   const grantedCount = emp.isAdmin
@@ -226,6 +237,14 @@ function EmployeeCard({
             </View>
           </View>
 
+          {pagilogConfigured && (
+            <Button
+              title="⬆️ Envoyer vers PAGILOG"
+              variant="secondary"
+              loading={pushing}
+              onPress={pushToPagilog}
+            />
+          )}
           <Button title="🗑️ Supprimer l’employé" variant="danger" onPress={confirmDelete} />
         </View>
       )}
