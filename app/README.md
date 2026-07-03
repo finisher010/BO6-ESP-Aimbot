@@ -49,8 +49,10 @@ en temps réel** sur tous les téléphones (`services/directorySync.ts`) :
   `admin`, `pin`… Le schéma exact est le seul point à ajuster une fois l'API
   PAGILOG connue (mappers testés unitairement).
 - Configuration dans l'écran **PAGILOG** (URL, clé, WebSocket, période).
-- **Serveur d'exemple** pour tester tout de suite le temps réel de bout en bout :
-  voir [`../mock-pagilog`](../mock-pagilog) (`npm install && npm start`).
+- **Backend gratuit inclus** ([`../server`](../server)) : une vraie API persistante
+  (REST + WebSocket temps réel) qui fait tout fonctionner **sans PAGILOG et sans
+  frais** — auto-hébergeable sur un PC/réseau local ou une offre gratuite. Pour un
+  simple double en mémoire, voir aussi [`../mock-pagilog`](../mock-pagilog).
 
 ## Module Entretien du parc
 

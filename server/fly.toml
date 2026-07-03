@@ -1,0 +1,29 @@
+# Déploiement sur Fly.io (https://fly.io) — offre gratuite avec volume persistant.
+# 1) fly launch --no-deploy   (crée l'app)
+# 2) fly volumes create fleet_data --size 1
+# 3) fly secrets set API_TOKEN=$(openssl rand -hex 16)
+# 4) fly deploy
+app = "fleet-api"
+primary_region = "cdg"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8787"
+  DB_PATH = "/data/db.json"
+
+[[mounts]]
+  source = "fleet_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = false
+  min_machines_running = 1
+
+[[http_service.checks]]
+  path = "/health"
+  interval = "30s"
+  timeout = "5s"
