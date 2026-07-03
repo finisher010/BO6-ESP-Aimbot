@@ -1,0 +1,21 @@
+# Déploiement gratuit sur Render (https://render.com).
+# Le plan gratuit s'endort après inactivité et n'a pas de disque persistant :
+# ajoutez un « Disk » monté sur /data pour conserver les données entre déploiements
+# (sinon la base repart des données d'exemple à chaque redémarrage).
+services:
+  - type: web
+    name: fleet-api
+    runtime: node
+    plan: free
+    buildCommand: npm install --omit=dev
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    envVars:
+      - key: DB_PATH
+        value: /data/db.json
+      - key: API_TOKEN
+        generateValue: true
+    disk:
+      name: fleet-data
+      mountPath: /data
+      sizeGB: 1
