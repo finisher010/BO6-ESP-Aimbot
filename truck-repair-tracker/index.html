@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Suivi des Réparations — Flotte de 15 Camions</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --border:#334155;
+    --text:#e2e8f0; --muted:#94a3b8; --accent:#3b82f6; --accent2:#2563eb;
+    --green:#22c55e; --amber:#f59e0b; --red:#ef4444; --shadow:rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(160deg,#0b1220,#0f172a); color:var(--text); min-height:100vh;
+  }
+  header{
+    padding:20px 24px; background:var(--panel); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+    position:sticky; top:0; z-index:10; box-shadow:0 2px 10px var(--shadow);
+  }
+  header h1{margin:0; font-size:20px; display:flex; align-items:center; gap:10px}
+  .logo{font-size:26px}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+  button{
+    cursor:pointer; border:1px solid var(--border); background:var(--panel2); color:var(--text);
+    padding:8px 14px; border-radius:8px; font-size:14px; transition:.15s;
+  }
+  button:hover{border-color:var(--accent); background:#31445e}
+  button.primary{background:var(--accent2); border-color:var(--accent2); color:#fff}
+  button.primary:hover{background:var(--accent)}
+  button.danger{color:#fecaca}
+  button.danger:hover{border-color:var(--red); background:#3b1f22}
+
+  .stats{display:flex; gap:12px; flex-wrap:wrap; padding:18px 24px}
+  .stat{
+    flex:1; min-width:150px; background:var(--panel); border:1px solid var(--border);
+    border-radius:12px; padding:14px 16px;
+  }
+  .stat .num{font-size:26px; font-weight:700}
+  .stat .lbl{color:var(--muted); font-size:13px; margin-top:2px}
+  .stat.total .num{color:var(--text)}
+  .stat.todo .num{color:var(--amber)}
+  .stat.urgent .num{color:var(--red)}
+  .stat.done .num{color:var(--green)}
+
+  .filters{display:flex; gap:8px; flex-wrap:wrap; padding:0 24px 12px; align-items:center}
+  input,select,textarea{
+    font-family:inherit; font-size:14px; background:var(--panel2); color:var(--text);
+    border:1px solid var(--border); border-radius:8px; padding:8px 10px;
+  }
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--accent)}
+  .search{min-width:220px; flex:1}
+
+  .grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr));
+    gap:16px; padding:8px 24px 40px;
+  }
+  .truck{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    overflow:hidden; display:flex; flex-direction:column; box-shadow:0 4px 14px var(--shadow);
+  }
+  .truck-head{
+    padding:14px 16px; display:flex; align-items:center; justify-content:space-between;
+    border-bottom:1px solid var(--border); background:var(--panel2);
+  }
+  .truck-head .id{font-size:12px; color:var(--muted)}
+  .truck-head .name{font-weight:700; font-size:16px; display:flex; align-items:center; gap:8px}
+  .truck-head .plate{
+    font-size:11px; letter-spacing:1px; background:#0b1220; border:1px solid var(--border);
+    padding:2px 6px; border-radius:5px; color:var(--muted); font-weight:600;
+  }
+  .badge{font-size:11px; padding:3px 9px; border-radius:999px; font-weight:700}
+  .badge.ok{background:#0f2f1c; color:var(--green)}
+  .badge.warn{background:#3a2c0e; color:var(--amber)}
+  .badge.bad{background:#3b1c1e; color:var(--red)}
+
+  .truck-body{padding:12px 16px; flex:1; display:flex; flex-direction:column; gap:8px}
+  .meta{display:flex; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px}
+  .repairs{list-style:none; margin:6px 0 0; padding:0; display:flex; flex-direction:column; gap:6px}
+  .repair{
+    display:flex; align-items:flex-start; gap:8px; background:var(--panel2);
+    border:1px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13px;
+  }
+  .repair.done{opacity:.62}
+  .repair.done .rlabel{text-decoration:line-through}
+  .repair .prio{width:8px; height:8px; border-radius:50%; margin-top:5px; flex:none}
+  .prio.haute{background:var(--red)} .prio.moyenne{background:var(--amber)} .prio.basse{background:var(--green)}
+  .repair .rlabel{flex:1}
+  .repair .rdate{color:var(--muted); font-size:11px}
+  .repair .x{cursor:pointer; color:var(--muted); border:none; background:none; padding:0 2px; font-size:15px}
+  .repair .x:hover{color:var(--red)}
+  .repair input[type=checkbox]{margin-top:2px; cursor:pointer; accent-color:var(--accent)}
+  .empty-r{color:var(--muted); font-size:12px; font-style:italic; padding:4px 0}
+  .add-r{display:flex; gap:6px; margin-top:auto; padding-top:8px}
+  .add-r input{flex:1; min-width:0}
+  .add-r select{width:auto}
+
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(0,0,0,.6); display:none;
+    align-items:center; justify-content:center; z-index:50; padding:16px;
+  }
+  .modal-bg.open{display:flex}
+  .modal{
+    background:var(--panel); border:1px solid var(--border); border-radius:14px;
+    width:100%; max-width:440px; padding:22px;
+  }
+  .modal h2{margin:0 0 14px; font-size:18px}
+  .field{margin-bottom:12px}
+  .field label{display:block; font-size:13px; color:var(--muted); margin-bottom:5px}
+  .field input,.field select{width:100%}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:8px}
+  footer{text-align:center; color:var(--muted); font-size:12px; padding:16px}
+  .hint{color:var(--muted); font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="logo">🚚</span> Suivi des Réparations — Flotte</h1>
+  <div class="toolbar">
+    <button class="primary" onclick="openTruckModal()">+ Ajouter un camion</button>
+    <button onclick="exportData()">⬇ Exporter</button>
+    <button onclick="document.getElementById('importFile').click()">⬆ Importer</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+    <button class="danger" onclick="resetData()">↺ Réinitialiser</button>
+  </div>
+</header>
+
+<div class="stats" id="stats"></div>
+
+<div class="filters">
+  <input class="search" id="search" placeholder="🔎 Rechercher (nom, plaque, réparation…)" oninput="render()">
+  <select id="statusFilter" onchange="render()">
+    <option value="all">Tous les camions</option>
+    <option value="urgent">⚠ Réparation urgente</option>
+    <option value="todo">🔧 Réparations à prévoir</option>
+    <option value="ok">✅ À jour</option>
+  </select>
+  <select id="sortBy" onchange="render()">
+    <option value="id">Trier : n° camion</option>
+    <option value="pending">Trier : réparations en attente</option>
+    <option value="name">Trier : nom</option>
+  </select>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer>Données enregistrées localement dans votre navigateur • <span id="count"></span></footer>
+
+<!-- Modal ajout/édition camion -->
+<div class="modal-bg" id="truckModal">
+  <div class="modal">
+    <h2 id="truckModalTitle">Ajouter un camion</h2>
+    <div class="field"><label>Nom / Modèle</label><input id="tName" placeholder="Ex : Volvo FH16"></div>
+    <div class="field"><label>Plaque d'immatriculation</label><input id="tPlate" placeholder="Ex : AB-123-CD"></div>
+    <div class="field"><label>Kilométrage (km)</label><input id="tKm" type="number" min="0" placeholder="Ex : 245000"></div>
+    <div class="field"><label>Année</label><input id="tYear" type="number" min="1980" placeholder="Ex : 2019"></div>
+    <div class="modal-actions">
+      <button onclick="closeTruckModal()">Annuler</button>
+      <button class="primary" onclick="saveTruck()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORE_KEY = 'truckRepairTracker_v1';
+let state = { trucks: [] };
+let editingId = null;
+
+/* ---------- Données par défaut : 15 camions ---------- */
+function defaultData(){
+  const models = [
+    'Volvo FH16','Scania R500','Mercedes Actros','Renault T High','MAN TGX',
+    'DAF XF','Iveco S-Way','Volvo FM','Scania S730','Mercedes Arocs',
+    'Renault C480','MAN TGS','DAF CF','Iveco Stralis','Volvo FH'
+  ];
+  const seed = [
+    [{l:'Changement plaquettes de frein',p:'haute',d:false},{l:'Vidange moteur',p:'moyenne',d:true}],
+    [{l:'Révision boîte de vitesses',p:'moyenne',d:false}],
+    [{l:'Remplacement pneus avant',p:'haute',d:false},{l:'Contrôle technique',p:'haute',d:false}],
+    [{l:'Réparation climatisation',p:'basse',d:true}],
+    [],
+    [{l:'Changement filtre à air',p:'basse',d:false},{l:'Vidange moteur',p:'moyenne',d:true}],
+    [{l:'Réparation embrayage',p:'haute',d:false}],
+    [{l:'Remplacement batterie',p:'moyenne',d:true}],
+    [{l:'Contrôle freins ABS',p:'moyenne',d:false},{l:'Alignement essieux',p:'basse',d:false}],
+    [],
+    [{l:'Fuite circuit hydraulique',p:'haute',d:false}],
+    [{l:'Changement courroie distribution',p:'moyenne',d:true},{l:'Vidange pont',p:'basse',d:false}],
+    [{l:'Réparation phares',p:'basse',d:true}],
+    [{l:'Remplacement turbo',p:'haute',d:false},{l:'Contrôle technique',p:'moyenne',d:false}],
+    [{l:'Vidange moteur',p:'moyenne',d:false}]
+  ];
+  return {
+    trucks: models.map((m,i)=>({
+      id: i+1,
+      name: m,
+      plate: genPlate(i),
+      km: 120000 + i*13500,
+      year: 2016 + (i % 8),
+      repairs: (seed[i]||[]).map((r,j)=>({
+        id: Date.now()+i*100+j,
+        label:r.l, priority:r.p, done:r.d,
+        date: new Date(2026,5, (i+j)%28 +1).toISOString().slice(0,10)
+      }))
+    }))
+  };
+}
+function genPlate(i){
+  const L='ABCDEFGHJKLMNPRSTVWXYZ';
+  const a=L[i%L.length]+L[(i*3)%L.length];
+  const b=(100+i*7)%1000;
+  const c=L[(i*5)%L.length]+L[(i*2)%L.length];
+  return `${a}-${String(b).padStart(3,'0')}-${c}`;
+}
+
+/* ---------- Persistance ---------- */
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    state = raw ? JSON.parse(raw) : defaultData();
+  }catch(e){ state = defaultData(); }
+  save();
+}
+function save(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+
+/* ---------- Statut d'un camion ---------- */
+function truckStatus(t){
+  const pending = t.repairs.filter(r=>!r.done);
+  if(pending.some(r=>r.priority==='haute')) return 'urgent';
+  if(pending.length>0) return 'todo';
+  return 'ok';
+}
+const STATUS = {
+  urgent:{cls:'bad', txt:'⚠ Urgent'},
+  todo:  {cls:'warn',txt:'🔧 À prévoir'},
+  ok:    {cls:'ok',  txt:'✅ À jour'}
+};
+
+/* ---------- Rendu ---------- */
+function render(){
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const sf = document.getElementById('statusFilter').value;
+  const sort = document.getElementById('sortBy').value;
+
+  let list = state.trucks.slice();
+
+  if(q){
+    list = list.filter(t=>{
+      const hay = (t.name+' '+t.plate+' '+t.repairs.map(r=>r.label).join(' ')).toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  if(sf!=='all') list = list.filter(t=>truckStatus(t)===sf);
+
+  if(sort==='name') list.sort((a,b)=>a.name.localeCompare(b.name));
+  else if(sort==='pending') list.sort((a,b)=>pending(b)-pending(a));
+  else list.sort((a,b)=>a.id-b.id);
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = list.map(truckCard).join('') || '<p class="hint" style="padding:20px">Aucun camion ne correspond.</p>';
+
+  renderStats();
+  document.getElementById('count').textContent =
+    `${state.trucks.length} camions • ${totalPending()} réparation(s) en attente`;
+}
+function pending(t){ return t.repairs.filter(r=>!r.done).length; }
+function totalPending(){ return state.trucks.reduce((s,t)=>s+pending(t),0); }
+
+function renderStats(){
+  const total = state.trucks.length;
+  const urgent = state.trucks.filter(t=>truckStatus(t)==='urgent').length;
+  const todo = state.trucks.filter(t=>truckStatus(t)==='todo').length;
+  const doneCount = state.trucks.reduce((s,t)=>s+t.repairs.filter(r=>r.done).length,0);
+  document.getElementById('stats').innerHTML = `
+    <div class="stat total"><div class="num">${total}</div><div class="lbl">Camions dans la flotte</div></div>
+    <div class="stat urgent"><div class="num">${urgent}</div><div class="lbl">Réparations urgentes</div></div>
+    <div class="stat todo"><div class="num">${todo}</div><div class="lbl">Réparations à prévoir</div></div>
+    <div class="stat done"><div class="num">${doneCount}</div><div class="lbl">Réparations effectuées</div></div>`;
+}
+
+function truckCard(t){
+  const st = STATUS[truckStatus(t)];
+  const todo = t.repairs.filter(r=>!r.done);
+  const done = t.repairs.filter(r=>r.done);
+  const repairItem = r => `
+    <li class="repair ${r.done?'done':''}">
+      <input type="checkbox" ${r.done?'checked':''} onchange="toggleRepair(${t.id},${r.id})">
+      ${r.done?'':`<span class="prio ${r.priority}" title="Priorité : ${r.priority}"></span>`}
+      <span class="rlabel">${escapeHtml(r.label)}<br><span class="rdate">${r.done?'Effectué':'Prévu'} le ${r.date||'—'}</span></span>
+      <button class="x" title="Supprimer" onclick="deleteRepair(${t.id},${r.id})">✕</button>
+    </li>`;
+  return `
+  <div class="truck">
+    <div class="truck-head">
+      <div>
+        <div class="id">Camion n°${t.id}</div>
+        <div class="name">${escapeHtml(t.name)} <span class="plate">${escapeHtml(t.plate)}</span></div>
+      </div>
+      <span class="badge ${st.cls}">${st.txt}</span>
+    </div>
+    <div class="truck-body">
+      <div class="meta">
+        <span>📏 ${Number(t.km).toLocaleString('fr-FR')} km</span>
+        <span>📅 ${t.year||'—'}</span>
+        <button style="margin-left:auto;padding:2px 8px;font-size:12px" onclick="openTruckModal(${t.id})">✎ Modifier</button>
+        <button class="danger" style="padding:2px 8px;font-size:12px" onclick="deleteTruck(${t.id})">🗑</button>
+      </div>
+
+      <div><strong style="font-size:13px">🔧 À prévoir (${todo.length})</strong></div>
+      <ul class="repairs">${todo.map(repairItem).join('') || '<li class="empty-r">Aucune réparation à prévoir.</li>'}</ul>
+
+      ${done.length?`<div style="margin-top:6px"><strong style="font-size:13px">✅ Effectuées (${done.length})</strong></div>
+      <ul class="repairs">${done.map(repairItem).join('')}</ul>`:''}
+
+      <div class="add-r">
+        <input placeholder="Nouvelle réparation…" id="new-${t.id}" onkeydown="if(event.key==='Enter')addRepair(${t.id})">
+        <select id="prio-${t.id}">
+          <option value="haute">Haute</option>
+          <option value="moyenne" selected>Moyenne</option>
+          <option value="basse">Basse</option>
+        </select>
+        <button class="primary" onclick="addRepair(${t.id})">+</button>
+      </div>
+    </div>
+  </div>`;
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ---------- Actions réparations ---------- */
+function addRepair(tid){
+  const inp = document.getElementById('new-'+tid);
+  const label = inp.value.trim(); if(!label) return;
+  const prio = document.getElementById('prio-'+tid).value;
+  const t = state.trucks.find(x=>x.id===tid);
+  t.repairs.push({id:Date.now(), label, priority:prio, done:false, date:new Date().toISOString().slice(0,10)});
+  save(); render();
+}
+function toggleRepair(tid,rid){
+  const t=state.trucks.find(x=>x.id===tid);
+  const r=t.repairs.find(x=>x.id===rid);
+  r.done=!r.done; r.date=new Date().toISOString().slice(0,10);
+  save(); render();
+}
+function deleteRepair(tid,rid){
+  const t=state.trucks.find(x=>x.id===tid);
+  t.repairs=t.repairs.filter(x=>x.id!==rid);
+  save(); render();
+}
+
+/* ---------- Actions camions ---------- */
+function openTruckModal(id){
+  editingId = id ?? null;
+  document.getElementById('truckModalTitle').textContent = id? 'Modifier le camion':'Ajouter un camion';
+  const t = id? state.trucks.find(x=>x.id===id):{name:'',plate:'',km:'',year:''};
+  document.getElementById('tName').value=t.name||'';
+  document.getElementById('tPlate').value=t.plate||'';
+  document.getElementById('tKm').value=t.km||'';
+  document.getElementById('tYear').value=t.year||'';
+  document.getElementById('truckModal').classList.add('open');
+}
+function closeTruckModal(){ document.getElementById('truckModal').classList.remove('open'); }
+function saveTruck(){
+  const name=document.getElementById('tName').value.trim()||'Camion sans nom';
+  const plate=document.getElementById('tPlate').value.trim();
+  const km=Number(document.getElementById('tKm').value)||0;
+  const year=Number(document.getElementById('tYear').value)||'';
+  if(editingId){
+    const t=state.trucks.find(x=>x.id===editingId);
+    Object.assign(t,{name,plate,km,year});
+  }else{
+    const nid=(state.trucks.reduce((m,t)=>Math.max(m,t.id),0)||0)+1;
+    state.trucks.push({id:nid,name,plate,km,year,repairs:[]});
+  }
+  save(); closeTruckModal(); render();
+}
+function deleteTruck(id){
+  const t=state.trucks.find(x=>x.id===id);
+  if(confirm(`Supprimer le camion « ${t.name} » (n°${id}) ?`)){
+    state.trucks=state.trucks.filter(x=>x.id!==id);
+    save(); render();
+  }
+}
+
+/* ---------- Import / Export / Reset ---------- */
+function exportData(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='flotte-camions.json'; a.click();
+}
+function importData(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{ const d=JSON.parse(reader.result);
+      if(d && Array.isArray(d.trucks)){ state=d; save(); render(); }
+      else alert('Fichier invalide.');
+    }catch(err){ alert('Impossible de lire le fichier.'); }
+  };
+  reader.readAsText(file); e.target.value='';
+}
+function resetData(){
+  if(confirm('Réinitialiser toutes les données avec les 15 camions par défaut ?')){
+    state=defaultData(); save(); render();
+  }
+}
+
+/* ---------- Init ---------- */
+load(); render();
+</script>
+</body>
+</html>
